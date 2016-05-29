@@ -80,11 +80,9 @@ private[sql] class DiskPartition (
         //data.add(row)
       }
       data.add(row)
-      print("Added ")
-      println(row.getInt(0))
     }
     else
-      throw new SparkException("inputClosed=true. Cannot insert row at this time.")
+      throw new SparkException("Should not be adding rows if input closed. Bad things will happen!")
   }
 
   /**
@@ -135,13 +133,8 @@ private[sql] class DiskPartition (
 
       override def hasNext() = {
         // IMPLEMENT ME
-        if(currentIterator.hasNext)
-          currentIterator.hasNext
-          else{
-            println("no hasNext, going to fetch chunks")
-            fetchNextChunk()
-          }
-           //|| fetchNextChunk()
+        //If the current interator in partition or data chunks have things, we still have more data
+        currentIterator.hasNext || fetchNextChunk()
       }
 
       /**
@@ -157,8 +150,9 @@ private[sql] class DiskPartition (
           currentIterator = CS143Utils.getListFromBytes(byteArray).iterator.asScala
           true
         }
-        else //dummy we forgot this thats why it kept failing
+        else {//dummy we forgot this thats why it kept failing
           false
+        }
       }
 
     }
@@ -176,7 +170,9 @@ private[sql] class DiskPartition (
     inputClosed = true
 
     // TODO: write unwritten data
-    if (measurePartitionSize() > 0) { //aka not empty
+    if (!data.isEmpty()){
+    //IF YOU CAN FIGURE OUT WHY IT'S NOT BELOW THAT'D BE GREAT.
+    //measurePartitionSize() > 0) { //aka not empty
       spillPartitionToDisk()
       // Anything else besides spilling partition?
       // Clear out data in partition
@@ -232,12 +228,10 @@ private[sql] object DiskHashedRelation {
       val row: Row = keyGenerator(input.next)
       val index: Int = row.hashCode % size
       myPartitions(index).insert(row)
-      print("inserted ")
-      println(row.getInt(0))
     }
 
     for(i <- 0 to (size-1))
-      myPartitions(i).closeInput
+      myPartitions(i).closeInput()
 
     //Make a general one after I've filled up my partitions
     val genDHR: GeneralDiskHashedRelation = new GeneralDiskHashedRelation(myPartitions)
