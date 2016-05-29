@@ -64,6 +64,21 @@ private[sql] class DiskPartition (
    */
   def insert(row: Row) = {
     // IMPLEMENT ME
+    if(!inputClosed) {
+      data.add(row)
+      // Do we need to update chunkSizes too? Nah... chunkSizes does a thing in the spillPartition... If we did it twice that could be weird.
+
+      if (measurePartitionSize() > blockSize)
+      {
+        //Spill current partition, then make reset the partition.
+        data.remove(row)
+        spillPartitionToDisk()
+        data.clear()
+        data.add(row)
+      }
+    }
+    else
+      throw new SparkException("inputClosed=true. Cannot insert row at this time.")
   }
 
   /**
@@ -107,12 +122,14 @@ private[sql] class DiskPartition (
 
       override def next() = {
         // IMPLEMENT ME
-        null
+        if (currentIterator.hasNext) {
+          currentIterator.next()
+        } else null
       }
 
       override def hasNext() = {
         // IMPLEMENT ME
-        false
+        currentIterator.hasNext || fetchNextChunk //fetch the chunks for iterator
       }
 
       /**
@@ -123,7 +140,13 @@ private[sql] class DiskPartition (
        */
       private[this] def fetchNextChunk(): Boolean = {
         // IMPLEMENT ME
-        false
+        if (chunkSizeIterator.hasNext) {
+          byteArray = CS143Utils.getNextChunkBytes(inStream, chunkSizeIterator.next(), byteArray)
+          currentIterator = CS143Utils.getListFromBytes(byteArray).iterator.asScala
+          true
+        }
+        else //dummy we forgot this thats why it kept failing
+          false
       }
     }
   }
@@ -138,6 +161,16 @@ private[sql] class DiskPartition (
   def closeInput() = {
     // IMPLEMENT ME
     inputClosed = true
+
+    // TODO: write unwritten data
+    if (measurePartitionSize() > 0) { //aka not empty
+      spillPartitionToDisk()
+      // Anything else besides spilling partition?
+      // Clear out data in partition
+      data.clear()
+    }
+
+    outStream.close()
   }
 
 
