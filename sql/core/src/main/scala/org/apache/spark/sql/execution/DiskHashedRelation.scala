@@ -37,11 +37,14 @@ protected [sql] final class GeneralDiskHashedRelation(partitions: Array[DiskPart
 
   override def getIterator() = {
     // IMPLEMENT ME
-    null
+    partitions.iterator
   }
 
   override def closeAllPartitions() = {
     // IMPLEMENT ME
+    var iter: Iterator[DiskPartition] = getIterator()
+    while(iter.hasNext)
+      iter.next.closePartition()
   }
 }
 
@@ -65,17 +68,20 @@ private[sql] class DiskPartition (
   def insert(row: Row) = {
     // IMPLEMENT ME
     if(!inputClosed) {
-      data.add(row)
+      //data.add(row)
       // Do we need to update chunkSizes too? Nah... chunkSizes does a thing in the spillPartition... If we did it twice that could be weird.
 
       if (measurePartitionSize() > blockSize)
       {
         //Spill current partition, then make reset the partition.
-        data.remove(row)
+        //data.remove(row)
         spillPartitionToDisk()
         data.clear()
-        data.add(row)
+        //data.add(row)
       }
+      data.add(row)
+      print("Added ")
+      println(row.getInt(0))
     }
     else
       throw new SparkException("inputClosed=true. Cannot insert row at this time.")
@@ -129,7 +135,13 @@ private[sql] class DiskPartition (
 
       override def hasNext() = {
         // IMPLEMENT ME
-        currentIterator.hasNext || fetchNextChunk //fetch the chunks for iterator
+        if(currentIterator.hasNext)
+          currentIterator.hasNext
+          else{
+            println("no hasNext, going to fetch chunks")
+            fetchNextChunk()
+          }
+           //|| fetchNextChunk()
       }
 
       /**
@@ -148,6 +160,7 @@ private[sql] class DiskPartition (
         else //dummy we forgot this thats why it kept failing
           false
       }
+
     }
   }
 
@@ -207,6 +220,27 @@ private[sql] object DiskHashedRelation {
                 size: Int = 64,
                 blockSize: Int = 64000) = {
     // IMPLEMENT ME
-    null
+    //Create partition array
+    val myPartitions: Array[DiskPartition] = new Array[DiskPartition](size)
+
+    //Initialize that array
+    for (i <- 0 to (size-1))
+      myPartitions(i) = new DiskPartition(i.toString() , blockSize)
+
+    //Start populating the array
+    while(input.hasNext){
+      val row: Row = keyGenerator(input.next)
+      val index: Int = row.hashCode % size
+      myPartitions(index).insert(row)
+      print("inserted ")
+      println(row.getInt(0))
+    }
+
+    for(i <- 0 to (size-1))
+      myPartitions(i).closeInput
+
+    //Make a general one after I've filled up my partitions
+    val genDHR: GeneralDiskHashedRelation = new GeneralDiskHashedRelation(myPartitions)
+    genDHR 
   }
 }
