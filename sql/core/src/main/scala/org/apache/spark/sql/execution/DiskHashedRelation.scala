@@ -172,6 +172,7 @@ private[sql] class DiskPartition (
     // TODO: write unwritten data
     if (!data.isEmpty()){
     //IF YOU CAN FIGURE OUT WHY IT'S NOT BELOW THAT'D BE GREAT.
+    //Maybe just like how gotta check for chunky? 
     //measurePartitionSize() > 0) { //aka not empty
       spillPartitionToDisk()
       // Anything else besides spilling partition?
