@@ -200,26 +200,31 @@ object CachingIteratorGenerator {
 
         def next() = {
           // IMPLEMENT ME
-          val result = scala.collection.mutable.ListBuffer.empty[Row]
+          
           var curRow = input.next
+          val curKey = cacheKeyProjection(curRow)
 
-          val preEval = preUdfProjection.apply(curRow)
-          val postEval = postUdfProjection.apply(curRow)
+          val preEval = preUdfProjection(curRow)
+          val postEval = postUdfProjection(curRow)
 
-          result += preEval
 
           // KAITLYN TODO: Only evalute for new inputs?
           // Some kind of adding input to cacheKeys each round and checking
           // for previous matches? *insert shrug*
           // This doesn't work for some reason
-          if (!curRow.map{x => x.asInstanceOf[Expression]}.sameElements(cacheKeys)) {
-             val evaluation = udf.eval(curRow).asInstanceOf[Row]
-             result += evaluation
+          val evaluation = {
+            if (!cache.containsKey(curKey)) {
+              val evals = udfProject(curKey)
+              cache.put(curKey, evals)
+              evals
+            }
+            else
+              cache.get(curKey)
           }
 
-          result += postEval
+          val result = preEval ++ evaluation ++ postEval
 
-          Row.apply(result)
+          Row.fromSeq(result)
 
         }
       }
