@@ -99,16 +99,33 @@ case class PartitionProject(projectList: Seq[Expression], child: SparkPlan) exte
     val keyGenerator = CS143Utils.getNewProjection(projectList, child.output)
 
     // IMPLEMENT ME
-
+var partitionIter: Iterator[Row] = null //Seq[Row]().iterator
+      var relationIter = DiskHashedRelation(input, keyGenerator).getIterator
+      var cacheIter: (Iterator[Row]=>Iterator[Row]) = null
     new Iterator[Row] {
+      
+
       def hasNext() = {
         // IMPLEMENT ME
-        false
+
+        //Make an iterator for the partitions, 
+        //if that has a next then we good, if not get a new partition
+        if(partitionIter != null){
+          if(partitionIter.hasNext){
+            true
+          }
+          else
+            fetchNextPartition() 
+        }
+        else
+          fetchNextPartition()
       }
 
       def next() = {
         // IMPLEMENT ME
-        null
+        if (partitionIter.hasNext) {
+          partitionIter.next()
+        } else null
       }
 
       /**
@@ -119,6 +136,15 @@ case class PartitionProject(projectList: Seq[Expression], child: SparkPlan) exte
        */
       private def fetchNextPartition(): Boolean  = {
         // IMPLEMENT ME
+
+        //ADAM TODO: WHY NO WORK HERE I FEEL LIKE ITS MOSTLY GOOD???
+        //PLS FIX
+        if(relationIter.hasNext){
+          cacheIter = CS143Utils.generateCachingIterator(projectList, child.output)
+          partitionIter = cacheIter(relationIter.next().getData())
+          if(partitionIter.hasNext)
+            true
+        }
         false
       }
     }

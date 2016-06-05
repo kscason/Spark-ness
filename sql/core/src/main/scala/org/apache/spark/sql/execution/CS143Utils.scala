@@ -200,12 +200,14 @@ object CachingIteratorGenerator {
 
         def next() = {
           // IMPLEMENT ME
-          
-          var curRow = input.next
-          val curKey = cacheKeyProjection(curRow)
+          if(!input.hasNext)
+            null
 
-          val preEval = preUdfProjection(curRow)
-          val postEval = postUdfProjection(curRow)
+          var curRow = input.next
+          val curKey = cacheKeyProjection.apply(curRow)
+
+          val preEval = preUdfProjection.apply(curRow)
+          val postEval = postUdfProjection.apply(curRow)
 
 
           // KAITLYN TODO: Only evalute for new inputs?
