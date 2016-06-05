@@ -106,8 +106,7 @@ var partitionIter: Iterator[Row] = null //Seq[Row]().iterator
       
 
       def hasNext() = {
-        // IMPLEMENT ME
-
+        // IMPLEMENT ME : YES
         //Make an iterator for the partitions, 
         //if that has a next then we good, if not get a new partition
         if(partitionIter != null){
@@ -122,7 +121,7 @@ var partitionIter: Iterator[Row] = null //Seq[Row]().iterator
       }
 
       def next() = {
-        // IMPLEMENT ME
+        // IMPLEMENT ME : YES
         if (partitionIter.hasNext) {
           partitionIter.next()
         } else null
@@ -135,17 +134,20 @@ var partitionIter: Iterator[Row] = null //Seq[Row]().iterator
        * @return
        */
       private def fetchNextPartition(): Boolean  = {
-        // IMPLEMENT ME
+        // IMPLEMENT ME : YES
 
-        //ADAM TODO: WHY NO WORK HERE I FEEL LIKE ITS MOSTLY GOOD???
-        //PLS FIX
+        //If there are more partitions in disk
         if(relationIter.hasNext){
+          //Generate caching iterator for data of partition
           cacheIter = CS143Utils.generateCachingIterator(projectList, child.output)
           partitionIter = cacheIter(relationIter.next().getData())
+
+          //If the partition has stuff, true, otherwise move on
           if(partitionIter.hasNext)
             true
+          else false
         }
-        false
+        else false
       }
     }
   }
